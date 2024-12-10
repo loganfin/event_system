@@ -1,40 +1,60 @@
 #pragma once
 
-#include <any>
+#include "es/event.hpp"
+
 #include <functional>
-#include <iostream>
+#include <typeindex>
+#include <unordered_map>
 #include <vector>
 
 namespace es {
 
 class Dispatcher {
 public:
-    void start(std::function<void()> handler = {});
+    void start(std::function<void()> handler);
 
-    template <typename T> void subscribe(std::function<void(T const&)> handler)
+    template <typename EventType>
+        requires(std::derived_from<EventType, Event>)
+    void subscribe(std::function<void(EventType const&)> const& handler)
     {
-        handlers_.push_back(handler);
+        auto& handlers = get_handlers<EventType>();
+
+        handlers.push_back([handler](Event const& event) {
+            handler(static_cast<EventType const&>(event));
+        });
     }
 
-    template <typename T, typename... Args> void publish(Args... args)
+    template <typename EventType, typename... Args>
+        requires(std::derived_from<EventType, Event>)
+    void publish(Args&&... args)
     {
-        using TCallback = std::function<void(T const&)>;
+        auto event = EventType{std::forward<Args>(args)...};
 
-        // Create an event and pass const& to all subscribed handlers
-        auto event = T(args...);
+        auto& handlers = get_handlers<EventType>();
 
-        for (auto& handler : handlers_) {
-            if (handler.type() == typeid(TCallback)) {
-                std::cout << "Calling handler\n";
-                std::any_cast<TCallback>(handler)(event);
-            } else {
-                std::cout << "Handler doesn't match\n";
-            }
+        for (auto& handler : handlers) {
+            handler(event);
         }
     }
 
 private:
-    std::vector<std::any> handlers_;
+    std::unordered_map<
+        std::type_index,
+        std::vector<std::function<void(Event const&)>>>
+        handlers_;
+
+    template <typename EventType>
+        requires(std::derived_from<EventType, Event>)
+    std::vector<std::function<void(Event const&)>>& get_handlers()
+    {
+        auto type = std::type_index(typeid(EventType));
+
+        if (handlers_.find(type) == handlers_.end()) {
+            handlers_[type] = std::vector<std::function<void(Event const&)>>{};
+        }
+
+        return handlers_[type];
+    }
 };
 
 } // namespace es

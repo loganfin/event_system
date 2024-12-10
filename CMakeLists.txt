@@ -8,6 +8,7 @@ project(event_system LANGUAGES C CXX)
 
 add_executable(${PROJECT_NAME}
     ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
+    #${CMAKE_CURRENT_SOURCE_DIR}/src/gpt.cpp
 )
 
 target_include_directories(${PROJECT_NAME}

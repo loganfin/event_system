@@ -2,12 +2,10 @@
 
 namespace es {
 
-void Dispatcher::start(std::function<void()> handler /* = {} */)
+void Dispatcher::start(std::function<void()> handler)
 {
     while (true) {
-        if (handler) {
-            handler();
-        }
+        handler();
     };
 }
 
